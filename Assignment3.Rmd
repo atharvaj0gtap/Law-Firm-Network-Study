@@ -1,0 +1,370 @@
+---
+title: "Assignment 3"
+author: "Atharva Jagtap 39283783"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r}
+library(igraph)
+options(digits=3)
+
+advice <- matrix(scan("Advice.txt"),ncol=71,nrow=71,byrow=T)
+nodes <- read.csv("lawyers.csv", header=T)
+head(nodes)
+graph <- graph_from_adjacency_matrix(advice, mode = "directed")
+```
+
+```{r}
+#1
+status_count <- table(nodes$Status)
+partners_count <- status_count[1] # Partners
+associates_count <- status_count[2] # Associates
+
+gender_count <- table(nodes$Gender)
+men_count <- gender_count[1] # Men
+women_count <- gender_count[2] # Women
+
+practice_count <- table(nodes$Practice)
+litigation_count <- practice_count[1] # Litigation
+corporate_count <- practice_count[2] # Corporate
+
+Counts <- data.frame(
+  Group = c("Partners", "Associates", "Men", "Women", "Litigation",
+            "Corporate"),
+  Group_Size = c(partners_count, associates_count, men_count, women_count,
+                 litigation_count, corporate_count)
+)
+
+Counts
+```
+
+```{r}
+#2
+V(graph)$status <- nodes$Status
+V(graph)$practice <- nodes$Practice
+V(graph)$city <- nodes$City
+
+par(mar = c(0, 0, 0, 0))
+
+#Status network
+plot(graph, 
+     vertex.size=5, 
+     edge.arrow.size=0.3, 
+     vertex.color=V(graph)$status, 
+     vertex.label=NA,
+     layout=layout_with_fr)
+
+#Different Layout
+plot(graph, 
+     vertex.size=5, 
+     edge.arrow.size=0.3, 
+     vertex.color=V(graph)$status, 
+     vertex.label=NA,
+     layout=layout_with_kk)
+
+#Practice Network
+plot(graph, 
+     vertex.size=5, 
+     edge.arrow.size=0.3, 
+     vertex.color=V(graph)$practice, 
+     vertex.label=NA,
+     layout=layout_with_fr)
+
+#Different Layout
+plot(graph, 
+     vertex.size=5, 
+     edge.arrow.size=0.3, 
+     vertex.color=V(graph)$practice, 
+     vertex.label=NA,
+     layout=layout_with_kk)
+```
+
+
+```{r, echo=FALSE}
+cat("Findings:
+
+In the status plot, you observe that vertices representing partners and 
+associates cluster together, indicating that lawyers of similar hierarchical
+levels tend to interact more frequently within the firm. Partners form
+tight-knit groups, reflecting their collaboration on high-level cases,
+while associates group together due to shared training or routine casework.
+While cross-connections between partners and associates can suggest
+hierarchical divides and/or strong mentorship and collaboration.
+
+In the practice plot, clustering highlights how lawyers from the same
+practice group work closely together due to the nature of their specialized
+cases. However, cross-practice ties suggest interdisciplinary collaboration,
+where different practice groups work together on cases requiring diverse legal
+expertise, fostering integration across the firm.
+")
+```
+
+```{r}
+#3
+indegree <- degree(graph, mode = "in")
+outdegree <- degree(graph, mode = "out")
+
+# Histogram for in-degrees
+hist(indegree, 
+     main = "Histogram of In-Degrees", 
+     xlab = "In-Degree", 
+     col = "blue", 
+     breaks = 10)
+
+# Histogram for out-degrees
+hist(outdegree, 
+     main = "Histogram of Out-Degrees", 
+     xlab = "Out-Degree", 
+     col = "red", 
+     breaks = 10)
+```
+
+```{r, echo=FALSE}
+cat("
+Yes, the two histograms are similar in nature. Both distributions are
+skewed, indicating that a minority of individuals are highly central to the
+advice network, either as recipients or providers of advice.
+")
+```
+
+```{r}
+#4
+plot(indegree, outdegree, 
+     main = "Scatterplot of In-Degrees vs Out-Degrees",
+     xlab = "In-Degree",
+     ylab = "Out-Degree",
+     col = "blue")
+```
+
+```{r}
+correlation <- cor(indegree, outdegree)
+correlation
+```
+
+```{r, echo=FALSE}
+cat("
+With a correlation of 0.14, the scatterplot shows a weak positive relationship
+between in-degrees and out-degrees. This suggests that there is little linear
+relationship between how much advice someone gives and how much advice they
+receive. This could reflect a specialization within the firm, where certain
+individuals are primarily advice-givers (mentors, senior partners), while
+others are primarily advice-receivers (junior associates or those seeking
+guidance).
+")
+```
+
+```{r}
+#5
+nodes[, 10] <- indegree
+nodes[, 11] <- outdegree
+
+colnames(nodes)[10:11] <- c("indegree", "outdegree")
+head(nodes, 5)
+```
+
+```{r}
+#5a
+#Seniority vs In-Degree
+plot(nodes$Seniority, nodes$indegree, 
+     main = "Scatterplot of Seniority vs In-Degree",
+     xlab = "Seniority (1 = Most Senior, 71 = Least Senior)",
+     ylab = "In-Degree",
+     col = "blue")
+
+#Seniority vs Out-Degree
+plot(nodes$Seniority, nodes$outdegree, 
+     main = "Scatterplot of Seniority vs Out-Degree",
+     xlab = "Seniority (1 = Most Senior, 71 = Least Senior)",
+     ylab = "Out-Degree",
+     col = "red")
+```
+
+```{r, echo=FALSE}
+cat("Findings:
+
+Seniority vs In-Degree:
+We notice that senior lawyers, being more experienced, are sought out for
+advice more frequently, leading to higher in-degrees. As we go lower in
+seniority, the in-degrees decrease as junior lawyers are consulted less often.
+
+Seniority vs Out-Degree:
+There is no evident pattern visible but we can deduce that the highest
+seniority lawyers (1-10) have a very low out-degree as they do not need to seek
+advice as much as the rest of the lawyers. Beyond 10, the plot suggests that
+there isn't a strong relationship between seniority and out-degree. Lawyers
+across different seniority levels appear to have a wide range of out-degrees,
+meaning that advice-seeking is somewhat distributed across different levels of
+seniority.
+")
+```
+
+```{r}
+#5b
+#In-degree by status
+boxplot(nodes$indegree ~ nodes$Status,
+        main = "In-Degree by Status",
+        xlab = "Status (1 = Partner, 2 = Associate)",
+        ylab = "In-Degree",
+        col = c("lightblue", "lightcoral"))
+
+#Out-degree by status
+boxplot(nodes$outdegree ~ nodes$Status,
+        main = "Out-Degree by Status",
+        xlab = "Status (1 = Partner, 2 = Associate)",
+        ylab = "Out-Degree",
+        col = c("lightblue", "lightcoral"))
+
+mean_indegree_by_status <- tapply(nodes$indegree, nodes$Status, mean)
+
+mean_outdegree_by_status <- tapply(nodes$outdegree, nodes$Status, mean)
+
+df <- data.frame(
+  Status = c("Partner (1)", "Associate (2)"),
+  Indegree = mean_indegree_by_status,
+  Outdegree = mean_outdegree_by_status
+)
+
+df
+```
+
+```{r, echo=FALSE}
+cat("
+The boxplots and mean values indicate that partners are generally more central
+in the advice network in terms of being sought for advice (higher in-degrees),
+while both partners and associates are active in seeking advice (similar
+out-degrees). This reflects the hierarchical structure of the firm, where
+partners are seen as key sources of expertise.
+")
+```
+
+```{r}
+#5c
+#In-degree by practice
+boxplot(nodes$indegree ~ factor(nodes$Practice),
+        main = "In-Degree by Practice",
+        xlab = "Practice (1 = Litigation, 2 = Corporate)",
+        ylab = "In-Degree",
+        col = c("lightblue", "lightcoral"))
+
+#Out-degree by practice
+boxplot(nodes$outdegree ~ factor(nodes$Practice),
+        main = "Out-Degree by Practice",
+        xlab = "Practice (1 = Litigation, 2 = Corporate)",
+        ylab = "Out-Degree",
+        col = c("lightblue", "lightcoral"))
+
+mean_indegree_by_practice <- tapply(nodes$indegree, nodes$Practice, mean)
+
+mean_outdegree_by_practice <- tapply(nodes$outdegree, nodes$Practice, mean)
+
+df <- data.frame(
+  Practice = c("Litigation (1)", "Corporate (2)"),
+  Indegree = mean_indegree_by_practice,
+  Outdegree = mean_outdegree_by_practice
+)
+
+df
+```
+
+```{r, echo=FALSE}
+cat("
+The analysis suggests that litigation lawyers may be slightly more (13.3 
+vs 11.6) central in the advice network in terms of being consulted for advice 
+(in-degrees), but both litigation and corporate lawyers are equally active in
+lookout for advice (out-degrees). This could reflect areas where litigation 
+often involves more consultation and strategic discussions, whereas corporate 
+practice might have a more collaborative structure where advice-giving/seeking
+is spread evenly across colleagues.
+")
+```
+
+```{r}
+#6
+eigen.cent <- eigen_centrality(graph)
+eigen.cent
+
+nodes[, 12] <- eigen.cent$vector
+colnames(nodes)[12] <- "eigenvector_centrality"
+```
+
+```{r}
+#6a
+head(nodes, 5)
+```
+
+```{r}
+#6b
+max_centrality <- max(nodes$eigenvector_centrality)
+
+most_central_lawyers <- nodes[nodes$eigenvector_centrality == max_centrality, ]
+print(most_central_lawyers)
+```
+
+```{r}
+#6c
+plot(nodes$Seniority, nodes$eigenvector_centrality,
+     main = "Scatterplot of Seniority vs Eigenvector Centrality",
+     xlab = "Seniority (1 = Most Senior, 71 = Least Senior)",
+     ylab = "Eigenvector Centrality",
+     col = "blue")
+
+correlation <- cor(nodes$Seniority, nodes$eigenvector_centrality)
+correlation
+```
+
+```{r, echo=FALSE}
+cat("
+The negative correlation (-0.451) suggests that seniority has a substantial 
+impact on a lawyer's centrality in the firm's advice network. Senior lawyers, 
+due to their experience and authority are more central in the network and are 
+more likely to be connected to other highly central lawyers. Junior lawyers, 
+on the other hand, are less central. This is typical in hierarchical 
+structures like law firms, where seniority often correlates with influence 
+and network centrality.
+")
+```
+
+```{r}
+#6d
+boxplot(nodes$eigenvector_centrality ~ factor(nodes$Status),
+        main = "Eigenvector Centrality by Status",
+        xlab = "Status (1 = Partner, 2 = Associate)",
+        ylab = "Eigenvector Centrality",
+        col = c("lightblue", "lightcoral"))
+
+mean_eigenvector_by_status <- aggregate(eigenvector_centrality ~ Status, data = nodes, mean)
+mean_eigenvector_by_status
+```
+
+```{r, echo=FALSE}
+cat("
+The plots and computation shows that partners tend to occupy more central and
+powerful positions within the firm's advice network compared to associates.
+This again reflects the nature of law firms, where position often correlates 
+with centrality in networks.
+")
+```
+
+```{r}
+#6e
+boxplot(nodes$eigenvector_centrality ~ factor(nodes$Practice),
+        main = "Eigenvector Centrality by Practice",
+        xlab = "Practice (1 = Litigation, 2 = Corporate)",
+        ylab = "Eigenvector Centrality",
+        col = c("lightblue", "lightcoral"))
+
+mean_eigenvector_by_practice <- aggregate(eigenvector_centrality ~ Practice, data = nodes, mean)
+mean_eigenvector_by_practice
+```
+
+```{r, echo=FALSE}
+cat("
+The scores for litigation and corporate lawyers are quite similar. This 
+suggests that both groups are well-integrated into the firm's advice structure, 
+with no significant dominance of one practice over the other in terms of 
+influence and connectivity within the network. There is presence of an outlier 
+in the litigation practice which could reflect the importance of certain 
+individuals who are influential within that practice area.
+")
+```
